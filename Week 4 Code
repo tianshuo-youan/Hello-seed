@@ -1,0 +1,77 @@
+import os, sys, io, time
+import M5
+from M5 import *
+from hardware import *
+from unit import ENVUnit
+from machine import Pin, I2C
+
+env3_0 = None
+pet_level = 1
+# 🚨 终极路径：这是资源管理器上传图片的标准路径
+IMAGE_PATH = "res/img/pet.jpg" 
+
+def setup():
+    global env3_0
+    M5.begin()
+    M5.Display.setRotation(0)
+    M5.Display.clear()
+    
+    try:
+        # I2C 初始化 (StickC Plus 标准引脚)
+        i2c_bus = I2C(0, scl=Pin(33), sda=Pin(32), freq=100000)
+        env3_0 = ENVUnit(i2c=i2c_bus, type=3)
+        print("Sensor is working!")
+    except:
+        print("Sensor connection failed.")
+
+def draw_ui(temp, hum, level):
+    # 背景颜色 (薄荷绿)
+    M5.Display.fillScreen(0xCCFFCC)
+    M5.Display.setTextColor(0x000000)
+    
+    # 1. 顶部状态
+    M5.Display.setTextSize(2)
+    M5.Display.setCursor(5, 10)
+    M5.Display.print("Lv.{} HAPPY".format(level))
+    
+    # 2. 渲染妙蛙种子 (Render Pet)
+    try:
+        # X=2, Y=45 是为了在屏幕中上部留出呼吸感
+        M5.Display.drawImage(IMAGE_PATH, 2, 45)
+    except Exception as e:
+        # 如果还是报错，我们直接在屏幕上把路径印出来排错
+        M5.Display.setCursor(5, 100)
+        M5.Display.setTextSize(1)
+        M5.Display.print("Path Error: " + IMAGE_PATH)
+        print("Detailed Error:", e)
+
+    # 3. 底部白色数据面板
+    M5.Display.fillRect(0, 185, 135, 55, 0xFFFFFF)
+    M5.Display.setCursor(10, 195)
+    M5.Display.print("T:{:.1f}C".format(temp))
+    M5.Display.setCursor(10, 220)
+    M5.Display.print("H:{:.1f}%".format(hum))
+
+def loop():
+    global pet_level, env3_0
+    M5.update()
+    
+    if env3_0:
+        t = env3_0.read_temperature()
+        h = env3_0.read_humidity()
+        
+        # 按键交互
+        if M5.BtnA.wasPressed():
+            pet_level += 1
+            # 升级反馈
+            M5.Display.fillCircle(67, 120, 20, 0xFFFFFF)
+            time.sleep(0.1)
+            
+        draw_ui(t, h, pet_level)
+    
+    time.sleep(1)
+
+if __name__ == '__main__':
+    setup()
+    while True:
+        loop()
