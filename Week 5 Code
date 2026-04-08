@@ -1,0 +1,122 @@
+import os, time
+import M5
+from M5 import *
+from hardware import *
+from unit import ENVUnit
+from machine import Pin, I2C
+
+# ========= 配置 =========
+IMG_STAGE_1 = "/flash/res/img/stage1.jpg"
+IMG_STAGE_2 = "/flash/res/img/stage2.jpg"
+IMG_STAGE_3 = "/flash/res/img/stage3.jpg"
+
+TEMP_COMFY_MIN = 15.0
+TEMP_COMFY_MAX = 35.0
+
+# ========= 变量 =========
+env3_0 = None
+pet_level = 0
+
+
+# ========= 初始化 =========
+def setup():
+    global env3_0
+    M5.begin()
+    M5.Display.setRotation(0)
+    M5.Display.clear()
+
+    print("=== SYSTEM START ===")
+
+    # 🔍 检查文件（关键！）
+    try:
+        print("IMG LIST:", os.listdir('/flash/res/img'))
+    except Exception as e:
+        print("PATH ERROR:", e)
+
+    # 传感器初始化
+    try:
+        i2c_bus = I2C(0, scl=Pin(33), sda=Pin(32), freq=100000)
+        env3_0 = ENVUnit(i2c=i2c_bus, type=3)
+        print("Sensor OK")
+    except Exception as e:
+        print("Sensor Fail:", e)
+
+
+# ========= UI =========
+def draw_ui(temp, hum, level):
+    is_comfy = TEMP_COMFY_MIN <= temp <= TEMP_COMFY_MAX
+
+    bg_color = 0xCCFFCC if is_comfy else 0xFF9999
+    M5.Display.fillScreen(bg_color)
+
+    # 标题
+    M5.Display.setTextColor(0x000000)
+    M5.Display.setTextSize(2)
+    M5.Display.setCursor(5, 10)
+    M5.Display.print("Lv.{} ".format(level) + ("GROW" if is_comfy else "STOP"))
+
+    # ========= 图片切换 =========
+    if level < 16:
+        target = IMG_STAGE_1
+    elif level < 32:
+        target = IMG_STAGE_2
+    else:
+        target = IMG_STAGE_3
+
+    print("LEVEL:", level, "->", target)
+
+    # 👉 清除图片区（防黑屏残影）
+    M5.Display.fillRect(0, 45, 135, 140, bg_color)
+
+    # 👉 安全加载图片
+    try:
+        M5.Display.drawImage(target, 5, 45)
+    except Exception as e:
+        print("IMG LOAD FAIL:", target, e)
+        M5.Display.setCursor(5, 100)
+        M5.Display.setTextSize(1)
+        M5.Display.setTextColor(0xFF0000)
+        M5.Display.print("IMG ERR")
+        M5.Display.setCursor(5, 115)
+        M5.Display.print(target)
+
+    # 底部信息
+    M5.Display.fillRect(0, 185, 135, 55, 0xFFFFFF)
+    M5.Display.setTextColor(0x000000)
+
+    M5.Display.setCursor(10, 195)
+    M5.Display.print("T:{:.1f}C".format(temp))
+
+    M5.Display.setCursor(10, 220)
+    M5.Display.print("H:{:.1f}%".format(hum))
+
+
+# ========= 主循环 =========
+def loop():
+    global pet_level, env3_0
+    M5.update()
+
+    t, h = 0.0, 0.0
+
+    if env3_0:
+        try:
+            t = env3_0.read_temperature()
+            h = env3_0.read_humidity()
+
+            # 👉 只有在舒适温度才升级
+            if TEMP_COMFY_MIN <= t <= TEMP_COMFY_MAX:
+                pet_level += 1
+
+        except Exception as e:
+            print("Sensor read error:", e)
+
+    draw_ui(t, h, pet_level)
+
+    time.sleep(0.5)
+
+
+# ========= 入口 =========
+if __name__ == '__main__':
+    setup()
+    while True:
+        loop()
