@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hello Seed - 电子宠物系统 API 进化版</title>
+    <style>
+        :root {
+            --bg-comfy: #e0f2f1;
+            --bg-alert: #ffebee;
+            --primary: #4CAF50;
+            --text-main: #333;
+            --aura-color: rgba(0,0,0,0);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        body { 
+            background-color: var(--bg-comfy); 
+            display: flex;
+            justify-content: center;
+            align-items: center; 
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; 
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100%; 
+            background-color: var(--bg-comfy);
+            position: relative;
+            display: flex;
+            flex-direction: column; 
+            transition: background-color 0.5s ease; 
+        }
+
+        .top-bar {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .status-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+
+        .status-dot.connected {
+            background-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .home-view {
+            flex: 1;
+            display: block;
+            overflow: hidden;
+        }
+
+        .main-layout {
+            display: flex;
+            height: 100%;
+            flex-direction: row;
+            padding: 0 40px 120px 40px;
+            gap: 40px;
+            overflow: hidden;
+        }
+
+        .pet-stage { 
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 30px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+
+        .aura {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--aura-color) 0%, rgba(255,255,255,0) 70%);
+            opacity: 0;
+            transition: all 1s ease;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes aura-rotate {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.1) rotate(180deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 0.5;
+            }
+        }
+
+        .aura.active {
+            opacity: 1;
+            animation: aura-rotate 4s infinite linear;
+        }
+
+        .bubble {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(10px);
+            text-align: center;
+            font-weight: 500;
+            max-width: 80%;
+            line-height: 1.5;
+            z-index: 10;
+        }
+
+        .pet-image { 
+            width: 280px;
+            height: 280px;
+            object-fit: contain;
+            display: none; 
+            z-index: 5;
+            filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));
+            transition: transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1); 
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            justify-content: center;
+        }
+
+        .dashboard {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .data-card {
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .data-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 8px;
+        }
+
+        .decision-box { 
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            display: none; 
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #questionInput {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        #questionInput:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 10px;
+            border: none;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #askBtn {
+            background: var(--primary);
+        }
+
+        #drawLotBtn {
+            background: #FF9800;
+        }
+
+        #evolveBtn {
+            background: linear-gradient(135deg, #9C27B0, #673AB7);
+            width: 100%;
+            margin-top: 5px;
+            box-shadow: 0 5px 15px rgba(156, 39, 176, 0.3);
+        }
+
+        #connectBtn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 15px 30px rgba(76, 175, 80, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #connectBtn:hover {
+            transform: translate(-50%, -52%);
+            box-shadow: 0 20px 40px rgba(76, 175, 80, 0.5);
+        }
+
+        .chat-view {
+            display: none;
+            flex: 1;
+            padding: 0 40px 120px 40px;
+            overflow: hidden;
+        }
+
+        .chat-panel {
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.65);
+            border-radius: 30px;
+            padding: 28px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-shrink: 0;
+        }
+
+        .chat-title {
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: #444;
+        }
+
+        .clear-chat-btn {
+            flex: unset;
+            padding: 10px 16px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            background: #9E9E9E;
+            color: white;
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-right: 8px;
+        }
+
+        .chat-empty {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .chat-message {
+            max-width: 78%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 1rem;
+            word-break: break-word;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 6px;
+        }
+
+        .chat-message.pet {
+            align-self: flex-start;
+            background: white;
+            color: #444;
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        }
+
+        .chat-time {
+            font-size: 0.75rem;
+            opacity: 0.78;
+            margin-top: 4px;
+        }
+
+        .bottom-dock {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(360px, 90vw);
+            height: 70px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            border-radius: 28px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.16);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 200;
+            padding: 8px;
+        }
+
+        .dock-btn {
+            flex: 1;
+            height: 52px;
+            border-radius: 22px;
+            border: none;
+            background: transparent;
+            color: #666;
+            font-size: 0.95rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dock-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 6px 15px rgba(76, 175, 80, 0.28);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="appBg">
+    <div class="top-bar">
+        <div style="font-weight: 800; font-size: 1.2rem; color: #444; letter-spacing: 1px;">🌱 HELLO SEED</div>
+        <div id="statusDot" class="status-dot"></div>
+    </div>
+
+    <div id="homeView" class="home-view">
+        <div class="main-layout">
+            <div class="pet-stage">
+                <div id="petAura" class="aura"></div>
+                <div class="bubble" id="petBubble">请连接串口线以唤醒我...</div>
+                <img src="stage1_init.png" alt="Pet" class="pet-image" id="petImg">
+            </div>
+
+            <div class="right-panel">
+                <div class="dashboard">
+                    <div class="data-card">
+                        <div style="font-size: 1rem; color:#888; font-weight: bold;">🌡️ 温度</div>
+                        <div class="data-value"><span id="tempVal">--</span>°C</div>
+                    </div>
+                    <div class="data-card">
+                        <div style="font-size: 1rem; color:#888; font-weight: bold;">💧 湿度</div>
+                        <div class="data-value"><span id="humVal">--</span>%</div>
+                    </div>
+                </div>
+
+                <div class="decision-box" id="decisionArea">
+                    <div class="input-group">
+                        <input type="text" id="questionInput" placeholder="问问 Hello Seed...">
+                        <div class="btn-group">
+                            <button id="askBtn">互动</button>
+                            <button id="drawLotBtn">命运抽签</button>
+                        </div>
+                        <button id="evolveBtn">✨ 进化展示</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chatView" class="chat-view">
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div class="chat-title">🌱 和妙蛙种子的对话记录</div>
+                <button id="clearChatBtn" class="clear-chat-btn">清空记录</button>
+            </div>
+            <div id="chatList" class="chat-list">
+                <div class="chat-empty">还没有聊天记录。<br>去 Home 页面和妙蛙种子互动吧。</div>
+            </div>
+        </div>
+    </div>
+
+    <button id="connectBtn">🔌 连接硬件设备</button>
+
+    <div class="bottom-dock">
+        <button id="homeDockBtn" class="dock-btn active">🏠 Home</button>
+        <button id="chatDockBtn" class="dock-btn">💬 Chat</button>
+    </div>
+</div>
+
+<script>
+    const petImg = document.getElementById('petImg');
+    const petAura = document.getElementById('petAura');
+    const connectBtn = document.getElementById('connectBtn');
+    const petBubble = document.getElementById('petBubble');
+    const appBg = document.getElementById('appBg');
+    const decisionArea = document.getElementById('decisionArea');
+    const askBtn = document.getElementById('askBtn');
+    const drawLotBtn = document.getElementById('drawLotBtn');
+    const evolveBtn = document.getElementById('evolveBtn');
+    const questionInput = document.getElementById('questionInput');
+
+    const homeView = document.getElementById('homeView');
+    const chatView = document.getElementById('chatView');
+    const homeDockBtn = document.getElementById('homeDockBtn');
+    const chatDockBtn = document.getElementById('chatDockBtn');
+    const chatList = document.getElementById('chatList');
+    const clearChatBtn = document.getElementById('clearChatBtn');
+
+    let isBusy = false;
+    let evolutionLevel = 1;
+    let currentTempState = 'normal';
+    let chatHistory = JSON.parse(localStorage.getItem('helloSeedChatHistory')) || [];
+
+    const frames = [
+        "stage1_init.png",
+        "stage1_jump1.png",
+        "stage1_jump2.png",
+        "stage1_jump3.png", 
+        "stage1_think.png",
+        "stage2_init.png",
+        "stage3_init.png",
+        "hot.png",
+        "cold.png",
+        "lot_1.png",
+        "lot_2.png",
+        "lot_3.png",
+        "lot_4.png"
+    ];
+
+    frames.forEach(f => {
+        const img = new Image();
+        img.src = f;
+    });
+
+    function saveChatHistory() {
+        localStorage.setItem('helloSeedChatHistory', JSON.stringify(chatHistory));
+    }
+
+    function addChatRecord(role, text) {
+        chatHistory.push({
+            role,
+            text,
+            time: new Date().toLocaleString()
+        });
+
+        saveChatHistory();
+        renderChatHistory();
+    }
+
+    function renderChatHistory() {
+        if (!chatList) return;
+
+        if (chatHistory.length === 0) {
+            chatList.innerHTML = `
+                <div class="chat-empty">
+                    还没有聊天记录。<br>
+                    去 Home 页面和妙蛙种子互动吧。
+                </div>
+            `;
+            return;
+        }
+
+        chatList.innerHTML = chatHistory.map(item => {
+            const className = item.role === 'user' ? 'user' : 'pet';
+            const speaker = item.role === 'user' ? '你' : '妙蛙种子';
+
+            return `
+                <div class="chat-message ${className}">
+                    <div>${escapeHtml(item.text)}</div>
+                    <div class="chat-time">${speaker} · ${item.time}</div>
+                </div>
+            `;
+        }).join('');
+
+        chatList.scrollTop = chatList.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
+    function switchTab(tab) {
+        if (tab === 'home') {
+            homeView.style.display = 'block';
+            chatView.style.display = 'none';
+            homeDockBtn.classList.add('active');
+            chatDockBtn.classList.remove('active');
+        }
+
+        if (tab === 'chat') {
+            homeView.style.display = 'none';
+            chatView.style.display = 'flex';
+            homeDockBtn.classList.remove('active');
+            chatDockBtn.classList.add('active');
+            renderChatHistory();
+        }
+    }
+
+    homeDockBtn.addEventListener('click', () => {
+        switchTab('home');
+    });
+
+    chatDockBtn.addEventListener('click', () => {
+        switchTab('chat');
+    });
+
+    clearChatBtn.addEventListener('click', () => {
+        chatHistory = [];
+        saveChatHistory();
+        renderChatHistory();
+    });
+
+    renderChatHistory();
+
+    function applyEvolutionVisual() {
+        petAura.classList.remove('active');
+
+        if (evolutionLevel === 1) {
+            document.documentElement.style.setProperty('--aura-color', 'rgba(0,0,0,0)');
+            petImg.style.transform = 'scale(1) translateY(0)';
+            petImg.src = "stage1_init.png";
+        } else if (evolutionLevel === 2) {
+            document.documentElement.style.setProperty('--aura-color', 'rgba(33, 150, 243, 0.4)');
+            petAura.classList.add('active');
+            petImg.style.transform = 'scale(1.15) translateY(0)';
+            petImg.src = "stage2_init.png";
+        } else if (evolutionLevel === 3) {
+            document.documentElement.style.setProperty('--aura-color', 'rgba(255, 215, 0, 0.6)');
+            petAura.classList.add('active');
+            petImg.style.transform = 'scale(1.3) translateY(0)';
+            petImg.src = "stage3_init.png";
+        }
+    }
+
+    function resetToForm1() {
+        evolutionLevel = 1;
+        document.documentElement.style.setProperty('--aura-color', 'rgba(0,0,0,0)');
+        petAura.classList.remove('active');
+        petImg.style.transform = 'scale(1) translateY(0)';
+        petImg.src = "stage1_init.png";
+    }
+
+    evolveBtn.addEventListener('click', () => {
+        if (isBusy) return;
+
+        evolutionLevel++;
+
+        if (evolutionLevel > 3) {
+            evolutionLevel = 1;
+        }
+
+        applyEvolutionVisual();
+
+        if (evolutionLevel === 1) {
+            petBubble.innerText = "变回最初的模样啦 🌱";
+        } else if (evolutionLevel === 2) {
+            petBubble.innerText = "进化！草属性力量提升 ✨";
+        } else if (evolutionLevel === 3) {
+            petBubble.innerText = "究极进化！这气场绝了 🌟";
+        }
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !isBusy && petImg.style.display === 'block') {
+            e.preventDefault();
+            executeJump();
+        }
+
+        if (e.key === 'Enter' && document.activeElement === questionInput && !isBusy) {
+            e.preventDefault();
+            askBtn.click();
+        }
+    });
+
+    function executeJump() {
+        if (isBusy) return;
+
+        isBusy = true;
+
+        const previousLevel = evolutionLevel;
+        resetToForm1();
+
+        petBubble.innerText = "跳起来！";
+        petImg.src = "stage1_jump1.png";
+        petImg.style.transition = "transform 0.2s ease-out";
+        petImg.style.transform = "translateY(-40px)";
+
+        setTimeout(() => {
+            petImg.src = "stage1_jump2.png";
+            petImg.style.transform = "translateY(-80px)";
+        }, 200);
+
+        setTimeout(() => {
+            petImg.src = "stage1_jump3.png";
+            petImg.style.transition = "transform 0.2s ease-in";
+            petImg.style.transform = "translateY(0px)";
+        }, 400);
+
+        setTimeout(() => {
+            evolutionLevel = previousLevel;
+            applyEvolutionVisual();
+            isBusy = false;
+        }, 600);
+    }
+
+    askBtn.addEventListener('click', async () => {
+        const q = questionInput.value.trim();
+        if (!q || isBusy) return;
+
+        isBusy = true;
+        askBtn.disabled = true;
+
+        const previousLevel = evolutionLevel;
+        resetToForm1();
+
+        petImg.src = "stage1_think.png"; 
+        petBubble.innerText = "让我想想... 🤔";
+        petImg.style.transform = "scale(1.1)"; 
+
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    question: q
+                })
+            });
+
+            const data = await res.json();
+            const answer = data.answer || "我还没想好怎么回答...";
+
+            petBubble.innerText = answer;
+            questionInput.value = "";
+
+            addChatRecord('user', q);
+            addChatRecord('pet', answer);
+
+        } catch (err) {
+            console.error(err);
+
+            const errorAnswer = "网络好像出问题了，我暂时回答不了。";
+            petBubble.innerText = errorAnswer;
+
+            addChatRecord('user', q);
+            addChatRecord('pet', errorAnswer);
+        }
+
+        petImg.style.transform = "scale(1)";
+        evolutionLevel = previousLevel;
+        applyEvolutionVisual();
+
+        askBtn.disabled = false;
+        isBusy = false;
+    });
+
+    drawLotBtn.addEventListener('click', () => {
+        if (isBusy) return;
+
+        isBusy = true;
+
+        const previousLevel = evolutionLevel;
+        resetToForm1();
+
+        petImg.src = "stage1_think.png"; 
+        petBubble.innerText = "正在疯狂摇签筒... 🎋";
+        
+        petImg.style.transition = "transform 0.1s linear";
+        let shakes = 0;
+
+        const shakeInterval = setInterval(() => {
+            shakes++;
+            petImg.style.transform = shakes % 2 === 0 ? "rotate(10deg)" : "rotate(-10deg)";
+
+            if (shakes > 10) {
+                clearInterval(shakeInterval);
+                petImg.style.transform = "rotate(0deg) scale(1)";
+                petImg.style.transition = "transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)"; 
+            }
+        }, 100);
+
+        setTimeout(() => {
+            const lotNumber = Math.floor(Math.random() * 4) + 1;
+            petImg.src = `lot_${lotNumber}.png`; 
+            
+            const messages = {
+                1: "大吉！今天运势爆棚，随便造！🌟",
+                2: "小吉！稳稳当当，会有好事发生哦~ 🍀",
+                3: "大凶！诸事不宜，今天适合躺平 😱",
+                4: "小凶！喝水小心塞牙，走路注意脚下 🤕"
+            };
+            
+            petBubble.innerText = messages[lotNumber];
+            
+            if (lotNumber === 1) {
+                setTimeout(() => {
+                    petImg.style.transform = "translateY(-30px)";
+                    setTimeout(() => {
+                        petImg.style.transform = "translateY(0)";
+                    }, 200);
+                }, 500);
+            }
+            
+            setTimeout(() => {
+                evolutionLevel = previousLevel;
+                applyEvolutionVisual();
+                isBusy = false;
+            }, 5000);
+
+        }, 1500);
+    });
+
+    connectBtn.addEventListener('click', async () => {
+        try {
+            const port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 });
+
+            document.getElementById('statusDot').classList.add('connected');
+            connectBtn.style.display = 'none';
+            petImg.style.display = 'block'; 
+            decisionArea.style.display = 'flex'; 
+            petBubble.style.opacity = '1';
+            petBubble.style.transform = 'translateY(0)';
+            petBubble.innerText = "主人，连接成功！可以互动啦。";
+
+            applyEvolutionVisual();
+
+            const textDecoder = new TextDecoderStream();
+            port.readable.pipeTo(textDecoder.writable);
+            const reader = textDecoder.readable.getReader();
+
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+
+                if (done) break;
+
+                if (value) {
+                    buffer += value;
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (let line of lines) {
+                        try {
+                            const data = JSON.parse(line.trim());
+
+                            document.getElementById('tempVal').innerText = data.t;
+                            document.getElementById('humVal').innerText = data.h;
+
+                            if (!isBusy) {
+                                if (data.t > 32) {
+                                    if (currentTempState !== 'hot') {
+                                        appBg.style.backgroundColor = 'var(--bg-alert)';
+                                        document.body.style.backgroundColor = 'var(--bg-alert)';
+                                        petImg.src = "hot.png";
+                                        petBubble.innerText = "太热啦，我要熟了... 🥵";
+                                        currentTempState = 'hot';
+                                    }
+                                } else if (data.t < 15) {
+                                    if (currentTempState !== 'cold') {
+                                        appBg.style.backgroundColor = 'var(--bg-alert)';
+                                        document.body.style.backgroundColor = 'var(--bg-alert)';
+                                        petImg.src = "cold.png";
+                                        petBubble.innerText = "好冷，冻僵啦... 🥶";
+                                        currentTempState = 'cold';
+                                    }
+                                } else {
+                                    if (currentTempState !== 'normal') {
+                                        appBg.style.backgroundColor = 'var(--bg-comfy)';
+                                        document.body.style.backgroundColor = 'var(--bg-comfy)';
+                                        applyEvolutionVisual();
+                                        petBubble.innerText = "温度适宜，舒服~";
+                                        currentTempState = 'normal';
+                                    }
+                                }
+                            }
+
+                            if (data.p === 1 && !isBusy) {
+                                executeJump();
+                            }
+
+                        } catch (e) {
+                            console.warn("Invalid serial data:", line);
+                        }
+                    }
+                }
+            }
+
+        } catch (err) {
+            console.error(err);
+
+            document.getElementById('statusDot').classList.add('connected');
+            connectBtn.style.display = 'none';
+            petImg.style.display = 'block'; 
+            decisionArea.style.display = 'flex'; 
+            petBubble.style.opacity = '1';
+            petBubble.style.transform = 'translateY(0)';
+            petBubble.innerText = "未连接硬件，已进入演示模式。";
+
+            document.getElementById('tempVal').innerText = "25";
+            document.getElementById('humVal').innerText = "60";
+
+            applyEvolutionVisual();
+        }
+    });
+</script>
+</body>
+</html>
